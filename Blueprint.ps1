@@ -23,6 +23,9 @@
         $entity = New-Object -TypeName psobject
         $entity | Add-Member -MemberType NoteProperty -Name entity_number -Value $currindex
         $entity | Add-Member -MemberType NoteProperty -Name name -Value $name
+        if($direction -ne $null) {
+            $entity | Add-Member -MemberType NoteProperty -Name direction -Value $direction
+        }
         $pos = New-Object -TypeName psobject
         $pos | Add-Member -MemberType NoteProperty -Name x -Value $posx
         $pos | Add-Member -MemberType NoteProperty -Name y -Value $posy

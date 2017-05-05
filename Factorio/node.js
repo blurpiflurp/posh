@@ -1,4 +1,4 @@
-
+// thanks to /u/DemiPixel on reddit / https://github.com/demipixel/factorio-blueprint
 const zlib = require('zlib');
 const Buffer = require('buffer').Buffer;
 var string = "";

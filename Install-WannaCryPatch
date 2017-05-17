@@ -13,10 +13,8 @@ function Install-WannaCryPatch {
             $updateToInstall = new-object -comobj "Microsoft.Update.UpdateColl"
             $i = 0
             while($i -lt $searchresult.count-1) {
-                foreach($kb in $patches) {
-                    if($searchresult.item($i).kbarticleids -ne $null -and $SearchResult.item($i).kbarticleids -eq $kb) {
-                        $updateToInstall.add($SearchResult.item($i))
-                    }
+                if($searchresult.item($i).kbarticleids -ne $null -and $Patches.contains($SearchResult.item($i).kbarticleids)) {
+                    $updateToInstall.add($SearchResult.item($i))
                 }
                 $i++
             }

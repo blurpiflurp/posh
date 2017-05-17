@@ -16,7 +16,6 @@ function Install-WannaCryPatch {
                 foreach($kb in $patches) {
                     if($searchresult.item($i).kbarticleids -ne $null -and $SearchResult.item($i).kbarticleids -eq $kb) {
                         $updateToInstall.add($SearchResult.item($i))
-                        write-host "I want to download and install $($searchresult.item($i).title)"
                     }
                 }
                 $i++

@@ -1,31 +1,82 @@
 function Install-WannaCryPatch {
-    param($computer)
-    $scriptblock = {
-        $Criteria = "IsInstalled=0"
-        $Searcher = New-Object -ComObject Microsoft.Update.Searcher
-        $Patches = @('4012212', '4012213', '4012214', '4012215', '4012216', '4012217', '4012598', '4013429', '4015217', '4015438', '4015549', '4015550', '4015551', '4015552', '4015553', '4016635', '4019215', '4019216', '4019264', '4019472')
-        $SearchResult = $Searcher.Search($Criteria).Updates
+    param($computer,$cred)
+    [String]$TaskName = "PSWindowsUpdate"
+    [Scriptblock]$scriptblock = {
+        $Criteria = "IsInstalled=0";
+        $Searcher = New-Object -ComObject Microsoft.Update.Searcher;
+        $Patches = @('4012212', '4012213', '4012214', '4012215', '4012216', '4012217', '4012598', '4013429', '4015217', '4015438', '4015549', '4015550', '4015551', '4015552', '4015553', '4016635', '4019215', '4019216', '4019264', '4019472');
+        $SearchResult = $Searcher.Search($Criteria).Updates;
         if ($SearchResult.Count -eq 0) {
-            Write-Output "There are no applicable updates."
-            exit
+            Write-Output "There are no applicable updates.";
+            exit;
         } 
         else {
-            $updateToInstall = new-object -comobj "Microsoft.Update.UpdateColl"
-            $i = 0
+            $updateToInstall = new-object -comobj "Microsoft.Update.UpdateColl";
+            $i = 0;
             while($i -lt $searchresult.count-1) {
-                if($searchresult.item($i).kbarticleids -ne $null -and $Patches.contains($SearchResult.item($i).kbarticleids)) {
-                    $updateToInstall.add($SearchResult.item($i))
+                foreach($kb in $patches) {
+                    if($searchresult.item($i).kbarticleids -ne $null -and $kb -eq $SearchResult.item($i).kbarticleids) {
+                        $updateToInstall.add($SearchResult.item($i));
+                        write-host "I want to download and install $($searchresult.item($i).title)";
+                    }
                 }
-                $i++
+                $i++;
             }
-            $Session = New-Object -ComObject Microsoft.Update.Session
-            $Downloader = $Session.CreateUpdateDownloader()
-            $Downloader.Updates = $updateToInstall
-            $Downloader.Download()
-            $Installer = New-Object -ComObject Microsoft.Update.Installer
-            $Installer.Updates = $updateToInstall
-            $Result = $Installer.Install()
+            if($updateToInstall.count -gt 0) {
+                $Session = New-Object -ComObject Microsoft.Update.Session;
+                $Downloader = $Session.CreateUpdateDownloader();
+                $Downloader.Updates = $updateToInstall;
+                $Downloader.Download();
+                $Installer = New-Object -ComObject Microsoft.Update.Installer;
+                $Installer.Updates = $updateToInstall;
+                $Result = $Installer.Install();
+            }
         }
     }
-    Invoke-Command -ComputerName $computer -ScriptBlock $scriptblock
+	$Scheduler = New-Object -ComObject Schedule.Service
+	$Task = $Scheduler.NewTask(0)
+
+	$RegistrationInfo = $Task.RegistrationInfo
+	$RegistrationInfo.Description = $TaskName
+	$RegistrationInfo.Author = $User.Name
+
+	$Settings = $Task.Settings
+	$Settings.Enabled = $True
+	$Settings.StartWhenAvailable = $True
+	$Settings.Hidden = $False
+
+	$Action = $Task.Actions.Create(0)
+	$Action.Path = "powershell"
+	$Action.Arguments = "-Command $ScriptBlock"
+		
+	$Task.Principal.RunLevel = 1	
+	foreach($comp in $computer) {
+        $Scheduler.Connect($comp)
+		$RootFolder = $Scheduler.GetFolder("\")
+		$SendFlag = 1
+		if($Scheduler.GetRunningTasks(0) | Where-Object {$_.Name -eq $TaskName})
+		{
+			$CurrentTask = $RootFolder.GetTask($TaskName)
+			$Title = "Task $TaskName is curretly running: $($CurrentTask.Definition.Actions | Select-Object -exp Path) $($CurrentTask.Definition.Actions | Select-Object -exp Arguments)"
+			$Message = "What do you want to do?"
+
+			$ChoiceContiniue = New-Object System.Management.Automation.Host.ChoiceDescription "&Continue Current Task"
+			$ChoiceStart = New-Object System.Management.Automation.Host.ChoiceDescription "Stop and Start &New Task"
+			$ChoiceStop = New-Object System.Management.Automation.Host.ChoiceDescription "&Stop Task"
+			$Options = [System.Management.Automation.Host.ChoiceDescription[]]($ChoiceContiniue, $ChoiceStart, $ChoiceStop)
+			$SendFlag = $host.ui.PromptForChoice($Title, $Message, $Options, 0)
+					
+			if($SendFlag -ge 1)
+			{
+				($RootFolder.GetTask($TaskName)).Stop(0)
+			} #End If $SendFlag -eq 1	
+						
+		} #End If !($Scheduler.GetRunningTasks(0) | Where-Object {$_.Name -eq $TaskName})
+						
+		if($SendFlag -eq 1)
+		{
+			$RootFolder.RegisterTaskDefinition($TaskName, $Task, 6, "SYSTEM", $Null, 1) | Out-Null
+			$RootFolder.GetTask($TaskName).Run(0) | Out-Null
+		} #End If $SendFlag -eq 1
+    }    
 }

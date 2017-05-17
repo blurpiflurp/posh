@@ -1,0 +1,34 @@
+function Install-WannaCryPatch {
+    param($computer)
+    $scriptblock = {
+        $Criteria = "IsInstalled=0"
+        $Searcher = New-Object -ComObject Microsoft.Update.Searcher
+        $Patches = @('4012212', '4012213', '4012214', '4012215', '4012216', '4012217', '4012598', '4013429', '4015217', '4015438', '4015549', '4015550', '4015551', '4015552', '4015553', '4016635', '4019215', '4019216', '4019264', '4019472')
+        $SearchResult = $Searcher.Search($Criteria).Updates
+        if ($SearchResult.Count -eq 0) {
+            Write-Output "There are no applicable updates."
+            exit
+        } 
+        else {
+            $updateToInstall = new-object -comobj "Microsoft.Update.UpdateColl"
+            $i = 0
+            while($i -lt $searchresult.count-1) {
+                foreach($kb in $patches) {
+                    if($searchresult.item($i).kbarticleids -ne $null -and $SearchResult.item($i).kbarticleids -eq $kb) {
+                        $updateToInstall.add($SearchResult.item($i))
+                        write-host "I want to download and install $($searchresult.item($i).title)"
+                    }
+                }
+                $i++
+            }
+            $Session = New-Object -ComObject Microsoft.Update.Session
+            $Downloader = $Session.CreateUpdateDownloader()
+            $Downloader.Updates = $updateToInstall
+            $Downloader.Download()
+            $Installer = New-Object -ComObject Microsoft.Update.Installer
+            $Installer.Updates = $updateToInstall
+            $Result = $Installer.Install()
+        }
+    }
+    Invoke-Command -ComputerName $computer -ScriptBlock $scriptblock
+}

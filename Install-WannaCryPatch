@@ -65,6 +65,7 @@ function Install-WannaCryPatch {
 			$ChoiceStop = New-Object System.Management.Automation.Host.ChoiceDescription "&Stop Task"
 			$Options = [System.Management.Automation.Host.ChoiceDescription[]]($ChoiceContiniue, $ChoiceStart, $ChoiceStop)
 			$SendFlag = $host.ui.PromptForChoice($Title, $Message, $Options, 0)
+			### If you dont want the question just replace $SendFlag = ... with $SendFlag = 1 (stop & create new task) or 2 for stopping the task or 0 for Continue current task
 					
 			if($SendFlag -ge 1)
 			{
